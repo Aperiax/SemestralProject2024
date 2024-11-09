@@ -21,12 +21,10 @@ if __name__ == "__main__":
         "min": int(0)
     }
 
-    something = Player(params, paramsNormalizedDecision)
+    Player1 = Player(params, paramsNormalizedDecision, "A")
+    print(Player1)
+    print(Player1.player_name)
 
-    print(UniformDistribution(params_uniform).get_u(25))
+    Player1.generate_fx(player_name=Player1.player_name)
+    Player1.get_candidate(Player1.parameters)
 
-    # okay, this works, im passing player into MH class and getting initial condition
-    MetropolisHastings.get_candidate(params, 25)
-    MetropolisHastings.get_initial_state(parameters=params,
-                                         number_of_simulations=25)
-    MetropolisHastings.generate_fx("A")

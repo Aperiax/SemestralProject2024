@@ -110,81 +110,41 @@ class NormalDistribution(Distribution):
         return min(self.max, np.average(sample))
 
 
-class Player:
+class MetropolisHastings(NormalDistribution, UniformDistribution):
 
-    def __init__(self, parameters: dict, params_decision: dict) -> None:
-        self._fx = None  # slap a curve fit equation here, later
-        self._gxyDistrib = NormalDistribution(params_decision)
-        self._normsdist = NormalDistribution(parameters)
-
-    @staticmethod
-    def make_a_lookup() -> list:
-        lookup_list = list()
-        for i in range(0, 21):
-            lookup_list.append(i)
-        lookup_list.append(25)
-        list_triples = list(map(lambda x: x*3, lookup_list))
-        list_doubles = list(map(lambda x: x*2, lookup_list))
-        lookup = sorted(lookup_list + list_triples + list_doubles)
-        lookup.pop()
-        return lookup
-
-    LEGALTHROWS = make_a_lookup()
-
-    @staticmethod
-    def is_a_valid_throw(legal_throws, throw_candidate) -> bool:
-        """
-        checks whether a throw is a legal one
-        """
-        if throw_candidate in legal_throws:
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def get_initial_state(parameters, number_of_simulations):
-        while True:
-            initial_throw_xt = abs(int(NormalDistribution(parameters).get_xt(number_of_simulations)))
-            if Player.is_a_valid_throw(Player.LEGALTHROWS, initial_throw_xt):
-                print(f"Fetching initial state for simulation...\nstate acquired: {initial_throw_xt}")
-                return initial_throw_xt
-            else:
-                continue
-
-
-class MetropolisHastings(Player, NormalDistribution, UniformDistribution):
-
-    @staticmethod
-    def get_candidate(parameters: dict, *args) -> int:
+    def get_candidate(self, parameters: dict, *args) -> int:
         """
         calls normal distribution class getXt method and checks it against LEGALTHROWS
         pass a normal distribution-type parameters into this
         """
         parameter = parameters
         x_prime = 0
-        for arg in args: 
+        for arg in args:
             x_prime = arg
         # this just updates the avg part of params, this is gonna get thrown around a *lot*
         parameter.update({"avg": int(x_prime)})
         i = 0
-        while True: 
+        while True:
             x_t = abs(int(NormalDistribution(parameter).get_xt(10)))
             i += 1
             if x_t in Player.LEGALTHROWS:
                 print(f"Accepted candidate: {x_t}\nexiting loop after {i} iterations...")
                 return x_t
-            else: 
+            else:
                 print(f"{x_t}, candidate was rejected")
                 continue
+    # currently working on remaking this from static method
 
-    @staticmethod
-    def generate_fx(player_initial: str) -> list:
+    # do I really need to make this method static?
+
+    def generate_fx(self, player_name: str) -> list:
+
         """
         Gets the data from .csv z throwSaver.py, načte to do dict a pak s tím dál pracuje
         """
 
         # unpacks the player data
-        player = player_initial
+        print(f"iniciála: {player_name}")
         data = pd.read_csv(LOADPATH).fillna(0).to_numpy()
 
         transformed_data = np.delete(data, 0, 1)
@@ -194,7 +154,6 @@ class MetropolisHastings(Player, NormalDistribution, UniformDistribution):
 
         for (initial, points) in zip(["A", "M", "T", "K"], range(upper)):
             print(transformed_data[:, points])
-            print(initial)
             unpacked_data.update({initial: transformed_data[:, points].tolist()})
 
         a = transformed_data[:, 0]
@@ -235,3 +194,56 @@ class MetropolisHastings(Player, NormalDistribution, UniformDistribution):
 
     def biasing(self):
         pass
+
+
+class Player(MetropolisHastings, Distribution):
+
+    def __init__(self, parameters: dict, params_decision: dict, initial: str) -> None:
+        super().__init__(parameters)
+        self.parameters = parameters
+        self.decision_params = params_decision
+        self.player_name = initial
+        self._fx = None  # slap a curve fit equation here, later
+        self._gxyDistrib = NormalDistribution(params_decision)
+        self._normsdist = NormalDistribution(parameters)
+
+    def __str__(self):
+        return (f"Player entity {self.player_name},\n"
+                f"parameters: {self.parameters},\n"
+                f"decision parameters: {self.decision_params}")
+
+    @staticmethod
+    def make_a_lookup() -> list:
+        lookup_list = list()
+        for i in range(0, 21):
+            lookup_list.append(i)
+        lookup_list.append(25)
+        list_triples = list(map(lambda x: x*3, lookup_list))
+        list_doubles = list(map(lambda x: x*2, lookup_list))
+        lookup = sorted(lookup_list + list_triples + list_doubles)
+        lookup.pop()
+        return lookup
+
+    LEGALTHROWS = make_a_lookup()
+
+    @staticmethod
+    def is_a_valid_throw(legal_throws, throw_candidate) -> bool:
+        """
+        checks whether a throw is a legal one
+        """
+        if throw_candidate in legal_throws:
+            return True
+        else:
+            return False
+
+    def get_initial_state(self, number_of_simulations):
+        parameters = self._params
+        while True:
+            initial_throw_xt = abs(int(NormalDistribution(parameters).get_xt(number_of_simulations)))
+            if Player.is_a_valid_throw(Player.LEGALTHROWS, initial_throw_xt):
+                print(f"Fetching initial state for simulation...\nstate acquired: {initial_throw_xt}")
+                return initial_throw_xt
+            else:
+                continue
+
+
