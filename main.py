@@ -1,5 +1,4 @@
-from GameLogic import *
-
+import GameLogic
 if __name__ == "__main__":
 
     params = {
@@ -21,9 +20,9 @@ if __name__ == "__main__":
         "min": int(0)
     }
 
-    Player1 = Player(params, paramsNormalizedDecision, "A")
+    Player1 = GameLogic.Player(params, paramsNormalizedDecision, "A")
     print(Player1)
-    print(f"current LOLOADPATH: {LOADPATH}")
+    print(f"current LOLOADPATH: {GameLogic.LOADPATH}")
     print(Player1.player_name)
     print(Player1._fx)
     Player1.generate_fx(player_name=Player1.player_name)

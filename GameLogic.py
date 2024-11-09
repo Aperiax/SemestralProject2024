@@ -1,5 +1,6 @@
 # TODO: constructors for::
 #       [] figure out biasing
+#       [] add a run function to MetropolisHastings
 import os
 import numpy as np
 import pandas as pd
@@ -61,7 +62,7 @@ class NormalDistribution(Distribution):
     @property
     def avg(self) -> float:
         """get the average"""
-        if self.AVERAGE not in self._params:
+        if self.AVERAGE not in self._params: 
             raise KeyError("AVG parameter missing")
         avg = self._params[self.AVERAGE]
         return avg
@@ -104,6 +105,14 @@ class NormalDistribution(Distribution):
 
 
 class MetropolisHastings(NormalDistribution, UniformDistribution):
+
+    """
+
+
+    Metropolis-Hastings algorithm implemetnation
+
+
+    """
 
     def get_candidate(self, parameters: dict, *args) -> int:
         """
@@ -253,8 +262,15 @@ class Player(MetropolisHastings, Distribution):
         while True:
             initial_throw_xt = abs(int(NormalDistribution(parameters).get_xt(number_of_simulations)))
             if Player.is_a_valid_throw(Player.LEGALTHROWS, initial_throw_xt):
-                print(f"Fetching initial state for simulation...\nstate acquired: {initial_throw_xt}")
+                print(f"Fetching initial state for simulation.. .\nstate acquired: {initial_throw_xt}")
                 return initial_throw_xt
             else:
                 continue
 
+    def run(self, number_of_sims_per_throw: int, num_of_throws: int) -> None:
+        
+        # calls everyhting until certain criteria has been met 
+        initial_state = self.get_initial_state(number_of_simulations=25)
+        # okay, so I get the initial state and pass it into the decision function
+        # wait, I am starting to get a feeling like I don't have a clue how the g(x|y) actually works
+        pass
