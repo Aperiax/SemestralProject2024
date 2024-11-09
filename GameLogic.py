@@ -192,7 +192,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
         alpha = f_x_prime / f_x
 
-        return alpha
+        return min(1, alpha)
 
     def reject_or_accept(self, alpha: float, parameters_uniform: dict) -> bool:
         """
@@ -274,3 +274,4 @@ class Player(MetropolisHastings, Distribution):
         # okay, so I get the initial state and pass it into the decision function
         # wait, I am starting to get a feeling like I don't have a clue how the g(x|y) actually works
         pass
+        
