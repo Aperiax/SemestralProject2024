@@ -1,17 +1,9 @@
 # TODO: constructors for::
-#       [] distribution
-#       [] features
-#       [] attributes
-#       [] implement M-H, flowchart is done
 #       [] figure out biasing
-#       [] refactor the player and metropolis hastings classes, I want the player to
-#          inherit the MH methods, so I can pass self as first argument, that way I can just
-#          construct the player with distribution parameters and work more simply with the rest
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import scipy as scp
 import scipy.optimize as opt
 import CurvesAndStats
 
@@ -19,7 +11,7 @@ import CurvesAndStats
 CWD = os.getcwd()
 
 SAVENAME = "dfThrowing.csv"
-LOADPATH = f"{CWD}\\{SAVENAME}"
+LOADPATH = f"{CWD}/{SAVENAME}"
 
 
 class Distribution(object):
@@ -99,15 +91,16 @@ class NormalDistribution(Distribution):
         return maximum
 
     def get_xt(self, simulations: int) -> float:
+        """gets the initial x for simulation"""
         sample = np.random.normal(self.avg, self.std, simulations)
-        return min(self.max, np.average(sample))
+        return min(float(self.max), float(np.average(sample)))
 
     # I will just update the parameters passed into the getCandidate after each run, to have
     # it centered around the previous candidate
 
     def candidate_stddist(self, simulations: int) -> float:
         sample = np.random.normal(self.avg, self.std, simulations)
-        return min(self.max, np.average(sample))
+        return min(float(self.max), float(np.average(sample)))
 
 
 class MetropolisHastings(NormalDistribution, UniformDistribution):
@@ -170,29 +163,44 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
         initial_guess = [a.mean(), a.std()]
 
-        # why does this only work with covariance stated as well?
-        # parameters now hold mu and sigma parameters
         result = opt.curve_fit(CurvesAndStats.Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
-        to_plot = result[0].tolist()
+        to_plot = result[0].tolist()  # to_plot je v podstate list tech idealnich parametru, tady to tedy bude \mu a \sigma
 
         plt.plot(xdata, CurvesAndStats.Gaussian.normal_curve(xdata, to_plot[0], to_plot[1]), color="red")
-        plt.show()
+        #plt.show()
 
         return to_plot
 
-    def calculate_alpha(self, initial_x: int, candidate: int) -> float:
+    def calculate_alpha(self, initial_x: int, candidate: int, f_x_params: list) -> float:
+        """
+        a function to generate the acceptance coefficient \alpha = f(x)/f(x')
+        """
 
-        # gets alpha by slamming candidate and
-        # initial state into the curve f(x)
-        # alpha = f(x)/f(x') => i.e. potřebuju tu křivku
+        initial_state = initial_x
+        mu, sigma = f_x_params[0], f_x_params[1]
+        f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)  # respektive proposal funkce by měla bejt gaussovka
+        f_x_prime = CurvesAndStats.Gaussian.normal_curve(candidate, mu, sigma)
 
-        pass
+        alpha = f_x_prime / f_x
 
-    def reject_or_accept(self) -> bool:
-        # rejects or accepts based on $\alpha$
-        pass
+        return alpha
+
+    def reject_or_accept(self, alpha: float, parameters_uniform: dict) -> bool:
+        """
+        a logical check dependent on \alpha
+        """
+        u = UniformDistribution(parameters_uniform)
+        decision_u = u.get_u(50)
+        if alpha <= decision_u:
+            return True
+        else:
+            return False
 
     def biasing(self):
+        """
+        A weighing function to make the bot "aim" more accurately the closer he gets to
+        0 points
+        """
         pass
 
 
@@ -203,7 +211,7 @@ class Player(MetropolisHastings, Distribution):
         self.parameters = parameters
         self.decision_params = params_decision
         self.player_name = initial
-        self._fx = None  # slap a curve fit equation here, later
+        self._fx = self.generate_fx(self.player_name)  # slap a curve fit equation here, late
         self._gxyDistrib = NormalDistribution(params_decision)
         self._normsdist = NormalDistribution(parameters)
 
@@ -227,7 +235,7 @@ class Player(MetropolisHastings, Distribution):
     LEGALTHROWS = make_a_lookup()
 
     @staticmethod
-    def is_a_valid_throw(legal_throws, throw_candidate) -> bool:
+    def is_a_valid_throw(legal_throws: list, throw_candidate: int) -> bool:
         """
         checks whether a throw is a legal one
         """
@@ -236,7 +244,11 @@ class Player(MetropolisHastings, Distribution):
         else:
             return False
 
-    def get_initial_state(self, number_of_simulations):
+    def get_initial_state(self, number_of_simulations: int) -> int:
+        """
+        generate the initial x for simulating by drawing random samples and comparing them to
+        a lookup table
+        """
         parameters = self._params
         while True:
             initial_throw_xt = abs(int(NormalDistribution(parameters).get_xt(number_of_simulations)))
@@ -245,5 +257,4 @@ class Player(MetropolisHastings, Distribution):
                 return initial_throw_xt
             else:
                 continue
-
 

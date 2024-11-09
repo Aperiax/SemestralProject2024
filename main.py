@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     Player1 = Player(params, paramsNormalizedDecision, "A")
     print(Player1)
+    print(f"current LOLOADPATH: {LOADPATH}")
     print(Player1.player_name)
-
+    print(Player1._fx)
     Player1.generate_fx(player_name=Player1.player_name)
     Player1.get_candidate(Player1.parameters)
-

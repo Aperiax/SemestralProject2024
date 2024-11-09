@@ -16,23 +16,23 @@ class Polynomial:
     f(x) = ax^5 + bx^4 + cx^3 + dx^2 + ex
     """
     @staticmethod
-    def fifth_degree(x: int, a, b, c, d, e, f):
+    def fifth_degree(x, a, b, c, d, e, f):
 
         f_x = a * x ** 5 + b * x ** 4 + c * x ** 3 + d * x ** 2 + e * x + f
         return f_x
 
     @staticmethod
-    def fourth_degree(x: (int, float), a, b, c, d, e):
+    def fourth_degree(x, a, b, c, d, e):
 
         f_x = (a * x ** 4 + b * x ** 3 + c * x ** 2 + d * x + e)
         return f_x
 
     @staticmethod
-    def cubic(x:(int, float), a, b, c, d):
+    def cubic(x, a, b, c, d):
         f_x = a * x ** 3 + b * x ** 2 + c * x + d
         return f_x
 
     @staticmethod
-    def quadratic(x: (int, float), a, b, c):
+    def quadratic(x, a, b, c):
         f_x = a * x ** 2 + b * x + c
         return f_x
