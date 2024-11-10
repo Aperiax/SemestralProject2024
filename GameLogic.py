@@ -1,11 +1,13 @@
 # TODO: constructors for::
 #       [] figure out biasing
 #       [] add a run function to MetropolisHastings
+#       [] treat the possibility of overshooting
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
+import copy
 import CurvesAndStats
 
 # load real world data for pre-analysis
@@ -19,6 +21,7 @@ class Distribution(object):
     """
     constructor for a distribution-type object
     """
+
     def __init__(self, parameters: dict) -> None:
         # error checks
         if not parameters:
@@ -82,7 +85,7 @@ class NormalDistribution(Distribution):
             raise KeyError("MIN parameter is missing")
         minimum = self._params[self.MINIMUM]
         return minimum
-        
+
     @property
     def max(self) -> float:
         """get the maximum value"""
@@ -136,11 +139,10 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
                 continue
 
     # currently working on remaking this from static method
- 
+
     # do I really need to make this method static?
 
     def generate_fx(self, player_name: str) -> list:
-
         """
         Gets the data from .csv z throwSaver.py, načte to do dict a pak s tím dál pracuje
         """
@@ -155,7 +157,8 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
         for (initial, points) in zip(["A", "M", "T", "K"], range(upper)):
             print(transformed_data[:, points])
-            unpacked_data.update({initial: transformed_data[:, points].tolist()})
+            unpacked_data.update(
+                {initial: transformed_data[:, points].tolist()})
 
         a = transformed_data[:, 0]
         hist, edges = np.histogram(a, 61, (a.min(), 60), True)
@@ -171,10 +174,13 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
         initial_guess = [a.mean(), a.std()]
 
-        result = opt.curve_fit(CurvesAndStats.Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
-        to_plot = result[0].tolist()  # to_plot je v podstate list tech idealnich parametru, tady to tedy bude \mu a \sigma
+        result = opt.curve_fit(
+            CurvesAndStats.Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
+        # to_plot je v podstate list tech idealnich parametru, tady to tedy bude \mu a \sigma
+        to_plot = result[0].tolist()
 
-        plt.plot(xdata, CurvesAndStats.Gaussian.normal_curve(xdata, to_plot[0], to_plot[1]), color="red")
+        plt.plot(xdata, CurvesAndStats.Gaussian.normal_curve(
+            xdata, to_plot[0], to_plot[1]), color="red")
         plt.savefig("retardedData.jpg")
 
         return to_plot
@@ -190,7 +196,8 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         # mu, sigma = f_x_params[0], f_x_params[1]
         # FOR TESTING AND BUILDING ONLY, REPLACE WITH REAL DATA LATER
         mu, sigma = parameters.get("avg"), parameters.get("std")
-        f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)  # respektive proposal funkce by měla bejt gaussovka
+        # respektive proposal funkce by měla bejt gaussovka
+        f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)
         f_x_prime = CurvesAndStats.Gaussian.normal_curve(candidate, mu, sigma)
         alpha = f_x_prime / f_x
 
@@ -207,11 +214,12 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         else:
             return False
 
-    def biasing(self):
+    def biasing(self, game_score: int):
         """
         A weighing function to make the bot "aim" more accurately the closer he gets to
         0 points
         """
+
         pass
 
 
@@ -222,7 +230,8 @@ class Player(MetropolisHastings, Distribution):
         self.parameters = parameters
         self.decision_uniform = params_uniform
         self.player_name = initial
-        self._fx = self.generate_fx(self.player_name)  # slap a curve fit equation here, late
+        # slap a curve fit equation here, late
+        self._fx = self.generate_fx(self.player_name)
         self._normsdist = NormalDistribution(parameters)
 
     def __str__(self):
@@ -262,33 +271,47 @@ class Player(MetropolisHastings, Distribution):
         """
         parameters = self._params
         while True:
-            initial_throw_xt = abs(int(NormalDistribution(parameters).get_xt(number_of_simulations)))
+            initial_throw_xt = abs(int(NormalDistribution(
+                parameters).get_xt(number_of_simulations)))
             if Player.is_a_valid_throw(Player.LEGALTHROWS, initial_throw_xt):
                 return initial_throw_xt
             else:
                 continue
 
-    def run(self, max_iterations: int) -> None:
+    def run(self, max_iterations: int, max_score: int) -> int:
         initial_state = self.get_initial_state(number_of_simulations=25)
         counter = 0
         signal = True
+        bin = []
+        legal = copy.copy(Player.LEGALTHROWS)
         while signal:
-            print(f"Entering iteration: {counter}")
+            # print(f"Entering iteration: {counter}")
             if counter != max_iterations:
                 signal = True
             else:
                 signal = False
             candidate = self.get_candidate(self.parameters)
-            print(f"iteration {counter} candidate: {candidate}\n")
-            alpha = self.calculate_alpha(self.parameters, initial_state, candidate)
-            print(f"calculated alpha: {alpha}")
-            reject_or_accept = self.reject_or_accept(alpha, self.decision_uniform)
+            # print(f"iteration {counter} candidate: {candidate}\n")
+            alpha = self.calculate_alpha(
+                self.parameters, initial_state, candidate)
+            # print(f"calculated alpha: {alpha}")
+            reject_or_accept = self.reject_or_accept(
+                alpha, self.decision_uniform)
+
             if reject_or_accept:
-                print(f"Candidate accepted, new intial state: {initial_state}")
+                # print(f"Candidate accepted, new intial state: {initial_state}")
                 initial_state = candidate
+                bin.append(candidate)
                 counter += 1
 
             else:
-                print(f"Candidate rejected, intial state unchanged ({initial_state})")
+                # print(f"Candidate rejected, intial state unchanged ({initial_state})")
                 initial_state = initial_state
                 counter += 1
+        average: int = int(np.average(bin))
+        if int(np.average(bin)) in legal:
+            return average
+        else:
+            legal.append(average)
+            newlist = sorted(legal)
+            return newlist[newlist.index(average)-1]

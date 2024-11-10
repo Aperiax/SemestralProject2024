@@ -22,4 +22,4 @@ if __name__ == "__main__":
 
     Player1 = GameLogic.Player(params, params_uniform, "A")
 
-    Player1.run(50)
+    print(Player1.run(50, 301))

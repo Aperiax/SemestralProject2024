@@ -11,6 +11,7 @@ class Gaussian:
         return f_x
 
 
+# in case I'd need a polynomial fit
 class Polynomial:
     """
     f(x) = ax^5 + bx^4 + cx^3 + dx^2 + ex
