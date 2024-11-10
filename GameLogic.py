@@ -50,7 +50,7 @@ class UniformDistribution(Distribution):
         get the uniform number for MC calculation
         """
         sample = np.random.uniform(self.max, self.min, simulations)
-        return int(min(self.max, np.average(sample)))
+        return float(np.average(sample))
 
 
 class NormalDistribution(Distribution):
@@ -62,7 +62,7 @@ class NormalDistribution(Distribution):
     @property
     def avg(self) -> float:
         """get the average"""
-        if self.AVERAGE not in self._params: 
+        if self.AVERAGE not in self._params:
             raise KeyError("AVG parameter missing")
         avg = self._params[self.AVERAGE]
         return avg
@@ -130,13 +130,11 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
             x_t = abs(int(NormalDistribution(parameter).get_xt(10)))
             i += 1
             if x_t in Player.LEGALTHROWS:
-                print(f"Accepted candidate: {x_t}\nexiting loop after {i} iterations...")
                 return x_t
             else:
-                print(f"{x_t}, candidate was rejected")
                 continue
     # currently working on remaking this from static method
-
+ 
     # do I really need to make this method static?
 
     def generate_fx(self, player_name: str) -> list:
@@ -146,7 +144,6 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         """
 
         # unpacks the player data
-        print(f"iniciála: {player_name}")
         data = pd.read_csv(LOADPATH).fillna(0).to_numpy()
 
         transformed_data = np.delete(data, 0, 1)
@@ -176,23 +173,27 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         to_plot = result[0].tolist()  # to_plot je v podstate list tech idealnich parametru, tady to tedy bude \mu a \sigma
 
         plt.plot(xdata, CurvesAndStats.Gaussian.normal_curve(xdata, to_plot[0], to_plot[1]), color="red")
-        #plt.show()
+        plt.savefig("retardedData.jpg")
 
         return to_plot
 
-    def calculate_alpha(self, initial_x: int, candidate: int, f_x_params: list) -> float:
+    #  remove parameters later and add back f_x_params
+    def calculate_alpha(self, parameters: dict, initial_x: int, candidate: int) -> float:
         """
         a function to generate the acceptance coefficient \alpha = f(x)/f(x')
         """
 
         initial_state = initial_x
-        mu, sigma = f_x_params[0], f_x_params[1]
+
+        # mu, sigma = f_x_params[0], f_x_params[1]
+        # FOR TESTING AND BUILDING ONLY, REPLACE WITH REAL DATA LATER
+        mu, sigma = parameters.get("avg"), parameters.get("std")
         f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)  # respektive proposal funkce by měla bejt gaussovka
         f_x_prime = CurvesAndStats.Gaussian.normal_curve(candidate, mu, sigma)
-
         alpha = f_x_prime / f_x
+    
 
-        return min(1, alpha)
+        return alpha
 
     def reject_or_accept(self, alpha: float, parameters_uniform: dict) -> bool:
         """
@@ -215,19 +216,18 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
 class Player(MetropolisHastings, Distribution):
 
-    def __init__(self, parameters: dict, params_decision: dict, initial: str) -> None:
+    def __init__(self, parameters: dict, params_uniform: dict, initial: str) -> None:
         super().__init__(parameters)
         self.parameters = parameters
-        self.decision_params = params_decision
+        self.decision_uniform = params_uniform
         self.player_name = initial
         self._fx = self.generate_fx(self.player_name)  # slap a curve fit equation here, late
-        self._gxyDistrib = NormalDistribution(params_decision)
         self._normsdist = NormalDistribution(parameters)
 
     def __str__(self):
         return (f"Player entity {self.player_name},\n"
                 f"parameters: {self.parameters},\n"
-                f"decision parameters: {self.decision_params}")
+                f"decision parameters: {self.decision_uniform}")
 
     @staticmethod
     def make_a_lookup() -> list:
@@ -256,22 +256,23 @@ class Player(MetropolisHastings, Distribution):
     def get_initial_state(self, number_of_simulations: int) -> int:
         """
         generate the initial x for simulating by drawing random samples and comparing them to
-        a lookup table
+        a lookup table, the rest is relegated to MH class' get_candidate function, which updates the parameters
+        dict so as to modulate g(x|x')
         """
         parameters = self._params
         while True:
             initial_throw_xt = abs(int(NormalDistribution(parameters).get_xt(number_of_simulations)))
             if Player.is_a_valid_throw(Player.LEGALTHROWS, initial_throw_xt):
-                print(f"Fetching initial state for simulation.. .\nstate acquired: {initial_throw_xt}")
                 return initial_throw_xt
             else:
                 continue
 
-    def run(self, number_of_sims_per_throw: int, num_of_throws: int) -> None:
-        
-        # calls everyhting until certain criteria has been met 
+    def run(self) -> tuple:
+        # get a step 0:
         initial_state = self.get_initial_state(number_of_simulations=25)
-        # okay, so I get the initial state and pass it into the decision function
-        # wait, I am starting to get a feeling like I don't have a clue how the g(x|y) actually works
-        pass
-        
+        candidate = self.get_candidate(self.parameters)
+        alpha = self.calculate_alpha(self.parameters,initial_state, candidate)
+        u = UniformDistribution(self.decision_uniform).get_u(10)
+        reject_or_accept = self.reject_or_accept(alpha, self.decision_uniform)
+        # now all that remains is just to finish the looping ang we're good
+        return (alpha, u)

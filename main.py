@@ -1,6 +1,7 @@
 import GameLogic
+import numpy as np
 if __name__ == "__main__":
-
+    # currently dummy parameters
     params = {
             "avg": int(35),
             "std": int(50),
@@ -16,14 +17,20 @@ if __name__ == "__main__":
                                }
 
     params_uniform = {
-        "max": int(10),
+        "max": int(1),
         "min": int(0)
     }
 
-    Player1 = GameLogic.Player(params, paramsNormalizedDecision, "A")
-    print(Player1)
-    print(f"current LOLOADPATH: {GameLogic.LOADPATH}")
-    print(Player1.player_name)
-    print(Player1._fx)
-    Player1.generate_fx(player_name=Player1.player_name)
-    Player1.get_candidate(Player1.parameters)
+    Player1 = GameLogic.Player(params, params_uniform, "A")
+
+    print(Player1.parameters)
+    Player1.get_candidate(params)
+    print(Player1.parameters)
+    listofalphas = []
+    listofus = []
+    for i in range(2000):
+        tupleToUnpack = Player1.run()
+        listofalphas.append(tupleToUnpack[0])
+        listofus.append(tupleToUnpack[1])
+    print(f"average alpha: {np.average(listofalphas)}")
+    print(f"average u: {np.average(listofus)}")
