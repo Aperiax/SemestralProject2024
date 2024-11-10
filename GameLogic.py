@@ -114,6 +114,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
     """
 
+    # this one is probably require a rewrite
     def get_candidate(self, parameters: dict, *args) -> int:
         """
         calls normal distribution class getXt method and checks it against LEGALTHROWS
@@ -124,15 +125,16 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         for arg in args:
             x_prime = arg
         # this just updates the avg part of params, this is gonna get thrown around a *lot*
-        parameter.update({"avg": int(x_prime)})
         i = 0
         while True:
-            x_t = abs(int(NormalDistribution(parameter).get_xt(10)))
+            x_prime = abs(int(NormalDistribution(parameter).get_xt(10)))
             i += 1
-            if x_t in Player.LEGALTHROWS:
-                return x_t
+            if x_prime in Player.LEGALTHROWS:
+                parameter.update({"avg": int(x_prime)})
+                return x_prime
             else:
                 continue
+
     # currently working on remaking this from static method
  
     # do I really need to make this method static?
@@ -191,7 +193,6 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)  # respektive proposal funkce by měla bejt gaussovka
         f_x_prime = CurvesAndStats.Gaussian.normal_curve(candidate, mu, sigma)
         alpha = f_x_prime / f_x
-    
 
         return alpha
 
@@ -267,12 +268,27 @@ class Player(MetropolisHastings, Distribution):
             else:
                 continue
 
-    def run(self) -> tuple:
-        # get a step 0:
+    def run(self, max_iterations: int) -> None:
         initial_state = self.get_initial_state(number_of_simulations=25)
-        candidate = self.get_candidate(self.parameters)
-        alpha = self.calculate_alpha(self.parameters,initial_state, candidate)
-        u = UniformDistribution(self.decision_uniform).get_u(10)
-        reject_or_accept = self.reject_or_accept(alpha, self.decision_uniform)
-        # now all that remains is just to finish the looping ang we're good
-        return (alpha, u)
+        counter = 0
+        signal = True
+        while signal:
+            print(f"Entering iteration: {counter}")
+            if counter != max_iterations:
+                signal = True
+            else:
+                signal = False
+            candidate = self.get_candidate(self.parameters)
+            print(f"iteration {counter} candidate: {candidate}\n")
+            alpha = self.calculate_alpha(self.parameters, initial_state, candidate)
+            print(f"calculated alpha: {alpha}")
+            reject_or_accept = self.reject_or_accept(alpha, self.decision_uniform)
+            if reject_or_accept:
+                print(f"Candidate accepted, new intial state: {initial_state}")
+                initial_state = candidate
+                counter += 1
+
+            else:
+                print(f"Candidate rejected, intial state unchanged ({initial_state})")
+                initial_state = initial_state
+                counter += 1
