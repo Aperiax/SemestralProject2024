@@ -3,6 +3,7 @@
 #       [] treat the possibility of overshooting
 import os
 import numpy as np
+from numpy.random import randint
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
@@ -158,7 +159,6 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         unpacked_data = {}
 
         for (initial, points) in zip(["A", "M", "T", "K"], range(upper)):
-            print(transformed_data[:, points])
             unpacked_data.update(
                 {initial: transformed_data[:, points].tolist()})
 
@@ -215,7 +215,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         else:
             return False
 
-    def biasing(self, game_score: int, current_candidate: int):
+    def biasing(self, game_score: int, current_candidate: int, starting_score: int):
         """
         A weighing function to make the bot "aim" more accurately the closer he gets to
         0 points
@@ -224,11 +224,9 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         # of the actual g(x|x')
         candidate_to_be_assesed: int = current_candidate
         current_score = game_score
-
         pass
 
-
-class Player(MetropolisHastings, Distribution):
+class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distribution):
 
     def __init__(self, parameters: dict, params_uniform: dict, initial: str) -> None:
         super().__init__(parameters)
@@ -254,7 +252,7 @@ class Player(MetropolisHastings, Distribution):
         list_doubles = list(map(lambda x: x*2, lookup_list))
         lookup = sorted(lookup_list + list_triples + list_doubles)
         lookup.pop()
-        return lookup
+        return list(set(lookup))
 
     LEGALTHROWS = make_a_lookup()
 
@@ -283,50 +281,59 @@ class Player(MetropolisHastings, Distribution):
             else:
                 continue
 
-    def run(self, max_iterations: int, max_score: int) -> None:
+    def run(self, max_iterations: int, score: int) -> tuple:
+        pass
         """
-        Runs the monte carlo simulation to draw a throw from
-        a distribution modelled after each player
+        Runs the monte carlo simulation to draw a sequence of three throws
+        a distribution modelled after each player, introduces extra "randomness factor"
+        to counteract getting way too accurate throws
         """
         initial_state = self.get_initial_state(number_of_simulations=25)
-        counter = 0
-        signal = True
-        bin = []
-        legal = copy.copy(Player.LEGALTHROWS)
-        score = max_score
-        while signal:
-            # print(f"Entering iteration: {counter}")
-            if counter != max_iterations:
-                signal = True
-            else:
-                signal = False
-            candidate = self.get_candidate(self.parameters)
-            # print(f"iteration {counter} candidate: {candidate}\n")
-            alpha = self.calculate_alpha(
-                self.parameters, initial_state, candidate)
-            # print(f"calculated alpha: {alpha}")
-            reject_or_accept = self.reject_or_accept(
-                alpha, self.decision_uniform)
+        legal = copy.copy(Player.LEGALTHROWS) 
+        return_throws = []
+        score_inner = score
+        u = UniformDistribution({"max": 0.5, "min": 0})
+        TOUGH_LUCK = u.get_u(50)
+        for _ in range(3):
+            counter = 0
+            signal = True
+            bin = []
+            while signal:
+                # print(f"Entering iteration: {counter}")
+                if counter != max_iterations:
+                    signal = True
+                else:
+                    signal = False
+                candidate = self.get_candidate(self.parameters)
+                # print(f"iteration {counter} candidate: {candidate}\n")
+                alpha = self.calculate_alpha(
+                    self.parameters, initial_state, candidate)
+                # print(f"calculated alpha: {alpha}")
+                reject_or_accept = self.reject_or_accept(
+                    alpha, self.decision_uniform)
 
-            if reject_or_accept:
-                # print(f"Candidate accepted, new intial state: {initial_state}")
-                initial_state = candidate
-                bin.append(candidate)
-                counter += 1
+                if reject_or_accept:
+                    initial_state = candidate
+                    bin.append(candidate)
+                    counter += 1
 
+                else:
+                    initial_state = initial_state
+                    counter += 1
+            # tady to pravděpodobně budu muset zase narhadit z return value na jenom apend do listu
+            # potřebuju callnout biasing a passnout mu aktuální score
+            average: int = int(np.average(bin) + np.random.choice((-1, 1), 1) * np.average(bin) * TOUGH_LUCK)
+            if average in Player.LEGALTHROWS:
+                # print(f"{average} is in legal throws")
+                return_throws.append(average)
+                score_inner -= average
             else:
-                # print(f"Candidate rejected, intial state unchanged ({initial_state})")
-                initial_state = initial_state
-                counter += 1
-        # tady to pravděpodobně budu muset zase narhadit z return value na jenom apend do listu
-        # potřebuju callnout biasing a passnout mu aktuální score
-        average: int = int(np.average(bin))
-        if average in legal:
-            print(average)
-            score -= average
-        else:
-            legal.append(average)
-            newlist = sorted(legal)
-            return_val = newlist[newlist.index(average)-1]
-            print(return_val)
-            score -= return_val
+                legal.append(average)
+                newlist = sorted(legal)
+                return_val = newlist[newlist.index(average)-1]
+                # print(
+                #     f"{average} was not in legal throws, appending next one: {return_val}")
+                return_throws.append(return_val)
+                score_inner -= return_val
+
+        return (return_throws, score)

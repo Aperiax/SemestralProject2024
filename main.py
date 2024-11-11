@@ -2,7 +2,7 @@ import GameLogic
 if __name__ == "__main__":
     # currently dummy parameters
     params = {
-            "avg": int(35),
+            "avg": int(30),
             "std": int(50),
             "max": int(60),
             "min": int(0)
@@ -21,5 +21,5 @@ if __name__ == "__main__":
     }
 
     Player1 = GameLogic.Player(params, params_uniform, "A")
-
-    print(Player1.run(50, 301))
+    for i in range(50):
+        print(Player1.run(50, 301))
