@@ -1,6 +1,5 @@
 # TODO: constructors for::
 #       [] figure out biasing
-#       [] add a run function to MetropolisHastings
 #       [] treat the possibility of overshooting
 import os
 import numpy as np
@@ -55,6 +54,9 @@ class UniformDistribution(Distribution):
         sample = np.random.uniform(self.max, self.min, simulations)
         return float(np.average(sample))
 
+
+# just rewrite this shit and get rid of the error checks, I'm not so dumb as to
+# pass missing data into my own program
 
 class NormalDistribution(Distribution):
     AVERAGE = "avg"
@@ -173,7 +175,6 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         ydata = np.array(hist)
 
         initial_guess = [a.mean(), a.std()]
-
         result = opt.curve_fit(
             CurvesAndStats.Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
         # to_plot je v podstate list tech idealnich parametru, tady to tedy bude \mu a \sigma
@@ -214,11 +215,15 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         else:
             return False
 
-    def biasing(self, game_score: int):
+    def biasing(self, game_score: int, current_candidate: int):
         """
         A weighing function to make the bot "aim" more accurately the closer he gets to
         0 points
         """
+        # I somehow need to add a check do decide how to manipulate the centering
+        # of the actual g(x|x')
+        candidate_to_be_assesed: int = current_candidate
+        current_score = game_score
 
         pass
 
@@ -278,12 +283,17 @@ class Player(MetropolisHastings, Distribution):
             else:
                 continue
 
-    def run(self, max_iterations: int, max_score: int) -> int:
+    def run(self, max_iterations: int, max_score: int) -> None:
+        """
+        Runs the monte carlo simulation to draw a throw from
+        a distribution modelled after each player
+        """
         initial_state = self.get_initial_state(number_of_simulations=25)
         counter = 0
         signal = True
         bin = []
         legal = copy.copy(Player.LEGALTHROWS)
+        score = max_score
         while signal:
             # print(f"Entering iteration: {counter}")
             if counter != max_iterations:
@@ -308,10 +318,15 @@ class Player(MetropolisHastings, Distribution):
                 # print(f"Candidate rejected, intial state unchanged ({initial_state})")
                 initial_state = initial_state
                 counter += 1
+        # tady to pravděpodobně budu muset zase narhadit z return value na jenom apend do listu
+        # potřebuju callnout biasing a passnout mu aktuální score
         average: int = int(np.average(bin))
-        if int(np.average(bin)) in legal:
-            return average
+        if average in legal:
+            print(average)
+            score -= average
         else:
             legal.append(average)
             newlist = sorted(legal)
-            return newlist[newlist.index(average)-1]
+            return_val = newlist[newlist.index(average)-1]
+            print(return_val)
+            score -= return_val
