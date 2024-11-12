@@ -2,7 +2,7 @@
 #       [] add a check for maximal possible throw without overhsooting
 #       [] implement updating the ubiform distribution according to biasing
 #           and max throw checks
-
+#       [] zaimplementovat nějakej check na nejoptimálnější hod
 import os
 import numpy as np
 import pandas as pd
@@ -214,7 +214,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         else:
             return False
 
-    def biasing(self, current_score: int):
+    def biasing(self, current_score: int, legal: list):
         """
         A weighing function to make the bot "aim" more accurately the closer he
         gets to 0 points, as it stands now, it works by literally just
@@ -222,7 +222,19 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         to be used by Player.run()
         """
         factor = CurvesAndStats.Gaussian.erf_with_random_factor(current_score)
-        return factor
+        optimal_throw_iteration = 0
+        lookup = copy.copy(legal)
+        match current_score:
+            case current_score if current_score >= 180:
+                optimal_throw_iteration = 60
+            case current_score if current_score < 180:
+                if current_score in lookup:
+                    optimal_throw_iteration = current_score
+                else:
+                    lookup.append(current_score)
+                    newlist = sorted(lookup)
+                    optimal_throw_iteration = newlist[newlist.index(current_score)-1]
+        return factor, optimal_throw_iteration
 
 
 class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distribution):
