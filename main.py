@@ -26,16 +26,5 @@ if __name__ == "__main__":
     Player1 = GameLogic.Player(params, params_uniform, "A")
     # for i in range(50):
     #     print(Player1.run(50, 301))
-    bin = []
-    for _ in range(0, 301):
-
-        container = []
-
-        for i in range(200):
-            container.append(Player1.biasing(301))
-
-        bin.append(np.average(container))
-
-    t = np.arange(301)
-    plt.scatter([i for i in range(len(bin))], bin, c=t)
-    plt.savefig(f"{os.getcwd()}/factor_scatter_with_erf.png")
+    print(Player1.biasing(301))
+    print(Player1.biasing(1))

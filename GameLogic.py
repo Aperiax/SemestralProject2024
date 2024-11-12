@@ -1,13 +1,13 @@
 # TODO: constructors for::
-#       [] figure out biasing
-#       [] treat the possibility of overshooting
+#       [] add a check for maximal possible throw without overhsooting
+#       [] implement updating the ubiform distribution according to biasing
+#           and max throw checks
+
 import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import copy
-import math
 import CurvesAndStats
 
 # load real world data for pre-analysis
@@ -221,9 +221,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         calculating the factor basend on score and returning said factor
         to be used by Player.run()
         """
-        # so far this only works as a random noise variable (see factor_scatter.png)
-        u = UniformDistribution({"max": 0.25, "min": 0})
-        factor = (math.sqrt(current_score) / 10) * np.random.choice(np.linspace(u.get_u(1), 0)) * math.erf(current_score / 100)
+        factor = CurvesAndStats.Gaussian.erf_with_random_factor(current_score)
         return factor
 
 
@@ -234,7 +232,6 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
         self.parameters = parameters
         self.decision_uniform = params_uniform
         self.player_name = initial
-        # slap a curve fit equation here, late
         self._fx = self.generate_fx(self.player_name)
         self._normsdist = NormalDistribution(parameters)
 
