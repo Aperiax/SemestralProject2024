@@ -3,11 +3,11 @@
 #       [] treat the possibility of overshooting
 import os
 import numpy as np
-from numpy.random import randint
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import copy
+import math
 import CurvesAndStats
 
 # load real world data for pre-analysis
@@ -164,7 +164,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
         a = transformed_data[:, 0]
         hist, edges = np.histogram(a, 61, (a.min(), 60), True)
-        plt.plot(edges[1:], hist)
+        # plt.plot(edges[1:], hist)
         edge_centers = []
 
         for i in range(1, len(edges.tolist())):
@@ -180,9 +180,8 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         # to_plot je v podstate list tech idealnich parametru, tady to tedy bude \mu a \sigma
         to_plot = result[0].tolist()
 
-        plt.plot(xdata, CurvesAndStats.Gaussian.normal_curve(
-            xdata, to_plot[0], to_plot[1]), color="red")
-        plt.savefig("retardedData.jpg")
+        # plt.plot(xdata, CurvesAndStats.Gaussian.normal_curve(
+        #     xdata, to_plot[0], to_plot[1]), color="red")
 
         return to_plot
 
@@ -215,16 +214,18 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         else:
             return False
 
-    def biasing(self, game_score: int, current_candidate: int, starting_score: int):
+    def biasing(self, current_score: int):
         """
-        A weighing function to make the bot "aim" more accurately the closer he gets to
-        0 points
+        A weighing function to make the bot "aim" more accurately the closer he
+        gets to 0 points, as it stands now, it works by literally just
+        calculating the factor basend on score and returning said factor
+        to be used by Player.run()
         """
-        # I somehow need to add a check do decide how to manipulate the centering
-        # of the actual g(x|x')
-        candidate_to_be_assesed: int = current_candidate
-        current_score = game_score
-        pass
+        # so far this only works as a random noise variable (see factor_scatter.png)
+        u = UniformDistribution({"max": 0.25, "min": 0})
+        factor = (math.sqrt(current_score) / 10) * np.random.choice(np.linspace(u.get_u(1), 0)) * math.erf(current_score / 100)
+        return factor
+
 
 class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distribution):
 
