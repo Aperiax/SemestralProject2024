@@ -214,12 +214,13 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         else:
             return False
 
-    def biasing(self, current_score: int, legal: list):
+    def biasing(self, current_score: int, legal: list) -> tuple:
         """
         A weighing function to make the bot "aim" more accurately the closer he
         gets to 0 points, as it stands now, it works by literally just
         calculating the factor basend on score and returning said factor
         to be used by Player.run()
+        :returns: tuple (factor, optimal_throw_iteration)
         """
         factor = CurvesAndStats.Gaussian.erf_with_random_factor(current_score)
         optimal_throw_iteration = 0
@@ -292,7 +293,6 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                 continue
 
     def run(self, max_iterations: int, score: int) -> tuple:
-        pass
         """
         Runs the monte carlo simulation to draw a sequence of three throws
         a distribution modelled after each player, introduces extra "randomness factor"
@@ -310,10 +310,12 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
             bin = []
             while signal:
                 # print(f"Entering iteration: {counter}")
+
                 if counter != max_iterations:
                     signal = True
                 else:
                     signal = False
+
                 candidate = self.get_candidate(self.parameters)
                 # print(f"iteration {counter} candidate: {candidate}\n")
                 alpha = self.calculate_alpha(
@@ -346,4 +348,12 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                 return_throws.append(return_val)
                 score_inner -= return_val
 
-        return (return_throws, score)
+            # update parameters:
+            bias_tuple = Player.biasing(self, score_inner, Player.LEGALTHROWS)
+            self.parameters.update({"avg": bias_tuple[0] * bias_tuple[1]})
+            # hopefully it is biased after eeach and eevery iteration 
+            # note to self: budu potřebovat updatenout main, nebo Game.py tak,
+            # aby si to pamatovalo score
+
+
+        return (return_throws, score_inner)
