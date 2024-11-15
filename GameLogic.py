@@ -68,32 +68,24 @@ class NormalDistribution(Distribution):
     @property
     def avg(self) -> float:
         """get the average"""
-        if self.AVERAGE not in self._params:
-            raise KeyError("AVG parameter missing")
         avg = self._params[self.AVERAGE]
         return avg
 
     @property
     def std(self) -> float:
         """get the standard deviation"""
-        if self.STANDARDDEVIATION not in self._params:
-            raise KeyError("STD parameter is missing")
         std = self._params[self.STANDARDDEVIATION]
         return std
 
     @property
     def min(self) -> float:
         """get the min value"""
-        if self.MINIMUM not in self._params:
-            raise KeyError("MIN parameter is missing")
         minimum = self._params[self.MINIMUM]
         return minimum
 
     @property
     def max(self) -> float:
         """get the maximum value"""
-        if self.MAXIMUM not in self._params:
-            raise KeyError("MIN parameter is missing")
         maximum = self._params[self.MAXIMUM]
         return maximum
 
@@ -101,9 +93,6 @@ class NormalDistribution(Distribution):
         """gets the initial x for simulation"""
         sample = np.random.normal(self.avg, self.std, simulations)
         return min(float(self.max), float(np.average(sample)))
-
-    # I will just update the parameters passed into the getCandidate after each run, to have
-    # it centered around the previous candidate
 
     def candidate_stddist(self, simulations: int) -> float:
         sample = np.random.normal(self.avg, self.std, simulations)
@@ -153,16 +142,16 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         # unpacks the player data
         data = pd.read_csv(LOADPATH).fillna(0).to_numpy()
 
-        transformed_data = np.delete(data, 0, 1)
-        upper = list(transformed_data.shape)[1]
-
+        upper = list(data.shape)[1]
+        print(upper)
         unpacked_data = {}
 
         for (initial, points) in zip(["A", "M", "T", "K"], range(upper)):
+            print(f"points {points}, unpack {unpacked_data}")
             unpacked_data.update(
-                {initial: transformed_data[:, points].tolist()})
-
-        a = transformed_data[:, 0]
+                {initial: data[:, points].tolist()})
+        print(unpacked_data)
+        a = data[:, 0]
         hist, edges = np.histogram(a, 61, (a.min(), 60), True)
         # plt.plot(edges[1:], hist)
         edge_centers = []
@@ -240,6 +229,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
 class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distribution):
 
+    # this is probably gonna need a rewrite, i will get the parameters as distinct parts of the json
     def __init__(self, parameters: dict, params_uniform: dict, initial: str) -> None:
         super().__init__(parameters)
         self.parameters = parameters
@@ -264,7 +254,6 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
         lookup = sorted(lookup_list + list_triples + list_doubles)
         lookup.pop()
         return list(set(lookup))
-
     LEGALTHROWS = make_a_lookup()
 
     @staticmethod
@@ -279,8 +268,10 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
 
     def get_initial_state(self, number_of_simulations: int) -> int:
         """
-        generate the initial x for simulating by drawing random samples and comparing them to
-        a lookup table, the rest is relegated to MH class' get_candidate function, which updates the parameters
+        generate the initial x for simulating by drawing random samples
+        and comparing them to a lookup table, the rest is relegated
+        to MH class' get_candidate
+        function, which updates the parameters
         dict so as to modulate g(x|x')
         """
         parameters = self._params
@@ -295,11 +286,11 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
     def run(self, max_iterations: int, score: int) -> tuple:
         """
         Runs the monte carlo simulation to draw a sequence of three throws
-        a distribution modelled after each player, introduces extra "randomness factor"
-        to counteract getting way too accurate throws
+        a distribution modelled after each player, introduces extra "randomness
+        factor" to counteract getting way too accurate throws
         """
         initial_state = self.get_initial_state(number_of_simulations=25)
-        legal = copy.copy(Player.LEGALTHROWS) 
+        legal = copy.copy(Player.LEGALTHROWS)
         return_throws = []
         score_inner = score
         u = UniformDistribution({"max": 0.5, "min": 0})

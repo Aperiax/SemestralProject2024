@@ -4,7 +4,7 @@ import os
 
 CWD = os.getcwd()
 SAVENAME = "dfThrowing.csv"
-SAVEPATH = f"{CWD}\{SAVENAME}"
+SAVEPATH = f"{CWD}/{SAVENAME}"
 LOADPATH = SAVEPATH
 
 def throwParser() -> dict: 
