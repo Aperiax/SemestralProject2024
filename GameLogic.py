@@ -3,11 +3,14 @@
 #       [] implement updating the ubiform distribution according to biasing
 #           and max throw checks
 #       [] zaimplementovat nějakej check na nejoptimálnější hod
+#       [] předělat player.__init__ tak, aby to správně deserializovalo ty .json
+#           s parametery hráčů
 import os
 import numpy as np
 import pandas as pd
 import scipy.optimize as opt
 import copy
+import json
 import CurvesAndStats
 
 # load real world data for pre-analysis
@@ -23,7 +26,6 @@ class Distribution(object):
     """
 
     def __init__(self, parameters: dict) -> None:
-        # error checks
         if not parameters:
             raise ValueError("Parameters for distribution are required")
         if not isinstance(parameters, dict):
@@ -130,62 +132,12 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
             else:
                 continue
 
-    # currently working on remaking this from static method
-
-    # do I really need to make this method static?
-
-    def generate_fx(self, player_name: str) -> list:
-        """
-        Gets the data from .csv z throwSaver.py, načte to do dict a pak s tím dál pracuje
-        """
-
-        # unpacks the player data
-        data = pd.read_csv(LOADPATH).fillna(0).to_numpy()
-
-        upper = list(data.shape)[1]
-        print(upper)
-        unpacked_data = {}
-
-        for (initial, points) in zip(["A", "M", "T", "K"], range(upper)):
-            print(f"points {points}, unpack {unpacked_data}")
-            unpacked_data.update(
-                {initial: data[:, points].tolist()})
-        print(unpacked_data)
-        a = data[:, 0]
-        hist, edges = np.histogram(a, 61, (a.min(), 60), True)
-        # plt.plot(edges[1:], hist)
-        edge_centers = []
-
-        for i in range(1, len(edges.tolist())):
-            edge_center = (edges[i] + edges[i - 1]) / 2
-            edge_centers.append(edge_center)
-
-        xdata = np.array(edge_centers)
-        ydata = np.array(hist)
-
-        initial_guess = [a.mean(), a.std()]
-        result = opt.curve_fit(
-            CurvesAndStats.Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
-        # to_plot je v podstate list tech idealnich parametru, tady to tedy bude \mu a \sigma
-        to_plot = result[0].tolist()
-
-        # plt.plot(xdata, CurvesAndStats.Gaussian.normal_curve(
-        #     xdata, to_plot[0], to_plot[1]), color="red")
-
-        return to_plot
-
     #  remove parameters later and add back f_x_params
-    def calculate_alpha(self, parameters: dict, initial_x: int, candidate: int) -> float:
+    def calculate_alpha(self,mu: float, sigma: float, initial_x: int, candidate: int) -> float:
         """
         a function to generate the acceptance coefficient \alpha = f(x)/f(x')
         """
-
         initial_state = initial_x
-
-        # mu, sigma = f_x_params[0], f_x_params[1]
-        # FOR TESTING AND BUILDING ONLY, REPLACE WITH REAL DATA LATER
-        mu, sigma = parameters.get("avg"), parameters.get("std")
-        # respektive proposal funkce by měla bejt gaussovka
         f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)
         f_x_prime = CurvesAndStats.Gaussian.normal_curve(candidate, mu, sigma)
         alpha = f_x_prime / f_x
@@ -223,20 +175,26 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
                 else:
                     lookup.append(current_score)
                     newlist = sorted(lookup)
-                    optimal_throw_iteration = newlist[newlist.index(current_score)-1]
+                    optimal_throw_iteration = newlist[newlist.index(current_score) - 1]
         return factor, optimal_throw_iteration
 
 
 class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distribution):
 
     # this is probably gonna need a rewrite, i will get the parameters as distinct parts of the json
-    def __init__(self, parameters: dict, params_uniform: dict, initial: str) -> None:
-        super().__init__(parameters)
-        self.parameters = parameters
+    def __init__(self, params_uniform: dict, initial: str) -> None:
+        # unpack player
+        parameters = None
+        with open(f"{os.getcwd()}/PlayerParams/{initial}_parameters.json", "r") as g:
+            parameters = json.load(g)
+
+        super().__init__(parameters[0])
+        self.parameters = parameters[0]
         self.decision_uniform = params_uniform
         self.player_name = initial
-        self._fx = self.generate_fx(self.player_name)
-        self._normsdist = NormalDistribution(parameters)
+        # THIS IS FUCKING WRONG, MUSIM PASSNOUT FCI, NE PARAMS
+        self._fx = parameters[1]
+        self._normsdist = NormalDistribution(parameters[0])
 
     def __str__(self):
         return (f"Player entity {self.player_name},\n"
@@ -249,8 +207,8 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
         for i in range(0, 21):
             lookup_list.append(i)
         lookup_list.append(25)
-        list_triples = list(map(lambda x: x*3, lookup_list))
-        list_doubles = list(map(lambda x: x*2, lookup_list))
+        list_triples = list(map(lambda x: x * 3, lookup_list))
+        list_doubles = list(map(lambda x: x * 2, lookup_list))
         lookup = sorted(lookup_list + list_triples + list_doubles)
         lookup.pop()
         return list(set(lookup))
@@ -310,7 +268,7 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                 candidate = self.get_candidate(self.parameters)
                 # print(f"iteration {counter} candidate: {candidate}\n")
                 alpha = self.calculate_alpha(
-                    self.parameters, initial_state, candidate)
+                    self.parameters["avg"], self.parameters["std"], initial_state, candidate)
                 # print(f"calculated alpha: {alpha}")
                 reject_or_accept = self.reject_or_accept(
                     alpha, self.decision_uniform)
@@ -323,9 +281,12 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                 else:
                     initial_state = initial_state
                     counter += 1
-            # tady to pravděpodobně budu muset zase narhadit z return value na jenom apend do listu
-            # potřebuju callnout biasing a passnout mu aktuální score
-            average: int = int(np.average(bin) + np.random.choice((-1, 1), 1) * np.average(bin) * TOUGH_LUCK)
+
+            # FALLBACK CASE
+            if not bin:
+                bin.append(initial_state)
+
+            average = int(max(0,np.average(bin)) + np.random.choice((-1, 1), 1)[0] * max(0, np.average(bin)) * max(0,TOUGH_LUCK))
             if average in Player.LEGALTHROWS:
                 # print(f"{average} is in legal throws")
                 return_throws.append(average)
@@ -333,7 +294,7 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
             else:
                 legal.append(average)
                 newlist = sorted(legal)
-                return_val = newlist[newlist.index(average)-1]
+                return_val = newlist[newlist.index(average) - 1]
                 # print(
                 #     f"{average} was not in legal throws, appending next one: {return_val}")
                 return_throws.append(return_val)
@@ -342,9 +303,8 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
             # update parameters:
             bias_tuple = Player.biasing(self, score_inner, Player.LEGALTHROWS)
             self.parameters.update({"avg": bias_tuple[0] * bias_tuple[1]})
-            # hopefully it is biased after eeach and eevery iteration 
+            # hopefully it is biased after eeach and eevery iteration
             # note to self: budu potřebovat updatenout main, nebo Game.py tak,
             # aby si to pamatovalo score
-
 
         return (return_throws, score_inner)
