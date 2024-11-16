@@ -1,23 +1,17 @@
 # TODO: constructors for::
 #       [] add a check for maximal possible throw without overhsooting
-#       [] implement updating the ubiform distribution according to biasing
-#           and max throw checks
-#       [] zaimplementovat nějakej check na nejoptimálnější hod
-#       [] předělat player.__init__ tak, aby to správně deserializovalo ty .json
-#           s parametery hráčů
+#       [] update the biasing so it is influenced by other player's score
+#       [] implement the actual game,
+#       [] ošetřit overshooting
 import os
 import numpy as np
-import pandas as pd
-import scipy.optimize as opt
 import copy
 import json
 import CurvesAndStats
 
-# load real world data for pre-analysis
-CWD = os.getcwd()
 
-SAVENAME = "dfThrowing.csv"
-LOADPATH = f"{CWD}/{SAVENAME}"
+CWD = os.getcwd()
+LOADPATH = f"{CWD}/PlayerParams/"
 
 
 class Distribution(object):
@@ -133,11 +127,15 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
                 continue
 
     #  remove parameters later and add back f_x_params
-    def calculate_alpha(self,mu: float, sigma: float, initial_x: int, candidate: int) -> float:
+    def calculate_alpha(self, mu: float, sigma: float, initial_x: int, candidate: int) -> float:
         """
         a function to generate the acceptance coefficient \alpha = f(x)/f(x')
         """
         initial_state = initial_x
+        # again, I don't know rn if this is gonna be normal dist
+        # then again, I can just hard-code it, since I will have only 4 players
+        # who'se data is pre-known. and if I wanted to build a new one, I can
+        # just pre-calculate them and hard-code it again
         f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)
         f_x_prime = CurvesAndStats.Gaussian.normal_curve(candidate, mu, sigma)
         alpha = f_x_prime / f_x
@@ -185,7 +183,7 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
     def __init__(self, params_uniform: dict, initial: str) -> None:
         # unpack player
         parameters = None
-        with open(f"{os.getcwd()}/PlayerParams/{initial}_parameters.json", "r") as g:
+        with open(f"{LOADPATH}/{initial}_parameters.json", "r") as g:
             parameters = json.load(g)
 
         super().__init__(parameters[0])
@@ -193,7 +191,7 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
         self.decision_uniform = params_uniform
         self.player_name = initial
         # THIS IS FUCKING WRONG, MUSIM PASSNOUT FCI, NE PARAMS
-        self._fx = parameters[1]
+        self._fx_params = parameters[1]
         self._normsdist = NormalDistribution(parameters[0])
 
     def __str__(self):
@@ -286,7 +284,7 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
             if not bin:
                 bin.append(initial_state)
 
-            average = int(max(0,np.average(bin)) + np.random.choice((-1, 1), 1)[0] * max(0, np.average(bin)) * max(0,TOUGH_LUCK))
+            average = int(max(0, np.average(bin)) + np.random.choice((-1, 1), 1)[0] * max(0, np.average(bin)) * max(0, TOUGH_LUCK))
             if average in Player.LEGALTHROWS:
                 # print(f"{average} is in legal throws")
                 return_throws.append(average)
@@ -299,12 +297,24 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                 #     f"{average} was not in legal throws, appending next one: {return_val}")
                 return_throws.append(return_val)
                 score_inner -= return_val
-
-            # update parameters:
-            bias_tuple = Player.biasing(self, score_inner, Player.LEGALTHROWS)
-            self.parameters.update({"avg": bias_tuple[0] * bias_tuple[1]})
+            # check for overshooting:
+            # flags: 
+            did_overshoot = False
+            did_win = False
+            # they are set to False by default to avoid running into "referenced before assignment"
+            
+            match score_inner:
+                case score_inner if score_inner < 0:
+                    did_overshoot = True
+                    break
+                case score_inner if score_inner == 0:
+                    did_win = True
+                    break
+                case score_inner if score_inner > 0:
+                    bias_tuple = Player.biasing(self, score_inner, Player.LEGALTHROWS)
+                    self.parameters.update({"avg": bias_tuple[0] * bias_tuple[1]})
             # hopefully it is biased after eeach and eevery iteration
             # note to self: budu potřebovat updatenout main, nebo Game.py tak,
             # aby si to pamatovalo score
 
-        return (return_throws, score_inner)
+        return (return_throws, score_inner, did_overshoot, did_win)
