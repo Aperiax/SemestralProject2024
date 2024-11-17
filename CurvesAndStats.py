@@ -57,6 +57,7 @@ class Polynomial:
 
 
 # TODO: potřebuju přesunout generate_fx do tohohle modulu
+# TODO: add a method to configure a new player
 class Statistics:
     """
     class containing statistical methods used to process
@@ -154,7 +155,6 @@ class Statistics:
             result = opt.curve_fit(
                 Polynomial.quadratic, xdata, ydata, p0=initial_guess)
             to_plot = result[0].tolist()
-
         return to_plot
 
     def savePlayerAsJson(self) -> None:
