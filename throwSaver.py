@@ -1,3 +1,4 @@
+# TODO: reconfigure thsi so that the data idct in throwParser() is configurable
 import pandas as pd
 import sys
 import os
@@ -7,10 +8,12 @@ SAVENAME = "dfThrowing.csv"
 SAVEPATH = f"{CWD}/{SAVENAME}"
 LOADPATH = SAVEPATH
 
-def throwParser() -> dict: 
+
+# the actual parser for throws
+def throwParser() -> dict:
 
     print("type in number and an initial in the form of **throwValue*, *initial** to update the dictionary")
-    data = {"A" : [], "M" : [], "T" : [], "K": []}
+    data = {"A": [], "M": [], "T": [], "K": []}
     counter = 0
     while True:
         inputed = input(f"enter data for throw {counter}:\n")
@@ -33,9 +36,11 @@ def throwParser() -> dict:
 
     return data
 
+
 def dataFramer(dictionary: dict) -> pd.DataFrame:
 
     data = dictionary
+    # wait, why am I doing this shit, as in why am I changing the data type of value
     df = pd.DataFrame(dict([(key, pd.Series(value)) for key, value in data.items()]))
 
     return df
@@ -68,15 +73,15 @@ def main():
                 saveOption = input("Would you like to save the data Y/N?\n")
                 if saveOption.strip().upper() == "Y":
 
-                    header = input(f"Would you like to include the header Y/N?\n").strip().upper()
+                    header = input("Would you like to include the header Y/N?\n").strip().upper()
                     try:
-                        if header == "Y": 
+                        if header == "Y":
                             saveData(data, True)
                             print(f"Data with header has been saved to: {SAVEPATH}\n")
                         elif header == "N":
                             saveData(data, False)
                             print(f"Just the throw values were saved to: {SAVEPATH}\n")
-                    except(KeyError,ValueError, IndexError):
+                    except(KeyError, ValueError, IndexError):
                         print("please input either Y or N")
 
             except(KeyError, ValueError, IndexError) as e:
