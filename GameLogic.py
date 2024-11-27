@@ -4,6 +4,7 @@
 #       [] implement the actual game,
 #       [] ošetřit overshooting
 import os
+import sys
 import numpy as np
 import copy
 import json
@@ -176,14 +177,25 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         return factor, optimal_throw_iteration
 
 
+class InvalidPlayerErr(Exception):
+    pass
+
+
+class InvalidPlayerParams(Exception):
+    pass
+
+
 class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distribution):
 
     # this is probably gonna need a rewrite, i will get the parameters as distinct parts of the json
     def __init__(self, params_uniform: dict, initial: str) -> None:
         # unpack player
         parameters = None
-        with open(f"{LOADPATH}/{initial}_parameters.json", "r") as g:
-            parameters = json.load(g)
+        try:
+            with open(f"{LOADPATH}/{initial}_parameters.json", "r") as g:
+                parameters = json.load(g)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Invalid player \"{initial}\",")
 
         super().__init__(parameters[0])
         self.parameters = parameters[0]

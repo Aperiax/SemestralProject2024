@@ -4,19 +4,26 @@ A runner module handling the game itself, so main.py remains clean
 
 import sys
 import GameLogic
+from GameLogic import InvalidPlayerErr, InvalidPlayerParams
 
 # what I want to do is literally just populating a lsit with all the players based on the input
 # actual game implementation
 
 
 def play_game() -> None:
-    print("Currently configured players: A, M, T, K")
-    bot_name = input("Plase choose a player you wish to play against:\n")
+    paramsNormalizedDecision = {"avg": int(0), "std": int(1), "max": int(60), "min": int(0)}
 
+    print("Currently configured players: A, M, T, K")
+    while True:
+        try:
+            bot_name = input("Plase choose a player you wish to play against:\n")
+            bot = GameLogic.Player(paramsNormalizedDecision, bot_name)
+            break
+        except FileNotFoundError as err:
+            print(err)
+            continue
     # set the gamemode score (we are mostly playing classic, no double-out 301 games)
     initial_score = 301
-    paramsNormalizedDecision = {"avg": int(0), "std": int(1), "max": int(60), "min": int(0)}
-    bot = GameLogic.Player(paramsNormalizedDecision, bot_name)
     counter = 0
     print(f"current score is {initial_score}")
 
@@ -28,6 +35,7 @@ def play_game() -> None:
                 # current_round = tuple([throws], bool(did it overshoot?))
                 current_round = bot.run(100, round_score)
                 round_score = current_round[1]
+                print(f"After round {counter} the score is: {round_score}, bot threw {sum(current_round[0])}")
 
                 # checks for win
                 if current_round[3]:
@@ -44,10 +52,11 @@ def play_game() -> None:
                 print(current_round)
             case "E":
                 sys.exit()
+            case _:
+                print("Please enter a valid option")
         counter += 1
         if counter > 30:
             # noone wants to play darts for more than 30 rounds, no matter how stubborn. And if I don't
             # pull the plug personally after 20, the bot will just do it after 30.
             print("\033[31mAfter extreme unluck, the bot decided to just win\033[0m")
             sys.exit()
-        print(f"After round {counter} the score is: {round_score}, bot threw {sum(current_round[0])}")
