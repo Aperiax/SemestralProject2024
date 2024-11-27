@@ -177,10 +177,6 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         return factor, optimal_throw_iteration
 
 
-class InvalidPlayerErr(Exception):
-    pass
-
-
 class InvalidPlayerParams(Exception):
     pass
 
@@ -195,7 +191,9 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
             with open(f"{LOADPATH}/{initial}_parameters.json", "r") as g:
                 parameters = json.load(g)
         except FileNotFoundError:
-            raise FileNotFoundError(f"Invalid player \"{initial}\",")
+            raise FileNotFoundError(f"Invalid or missing player \"{initial}\"")
+        except json.JSONDecodeError:
+            raise InvalidPlayerParams("Invalid player configuration. Reconfigure or change player")
 
         super().__init__(parameters[0])
         self.parameters = parameters[0]

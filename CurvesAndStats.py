@@ -87,6 +87,7 @@ class Statistics:
             "min": int(0),
             "max": int(60),
         }
+
         parameters.update({"avg": np.average(self.player_data_raw[:, self.id])})
         parameters.update({"std": np.std(self.player_data_raw[:, self.id])})
 

@@ -1,12 +1,11 @@
 import scipy.stats as stats
 import numpy as np
 import math
-import scipy.optimize as scp
 
 
 class tests:
     """
-    I'll just pass the data in the statistics object into here, I will be calling this 
+    I'll just pass the data in the statistics object into here, I will be calling this
     module from the CurvesAndStats.py anyway and statistics class there already has raw_data
     in constructor.
     """

@@ -4,7 +4,7 @@ A runner module handling the game itself, so main.py remains clean
 
 import sys
 import GameLogic
-from GameLogic import InvalidPlayerErr, InvalidPlayerParams
+from GameLogic import InvalidPlayerParams
 
 # what I want to do is literally just populating a lsit with all the players based on the input
 # actual game implementation
@@ -20,6 +20,9 @@ def play_game() -> None:
             bot = GameLogic.Player(paramsNormalizedDecision, bot_name)
             break
         except FileNotFoundError as err:
+            print(err)
+            continue
+        except InvalidPlayerParams as err:
             print(err)
             continue
     # set the gamemode score (we are mostly playing classic, no double-out 301 games)

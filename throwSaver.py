@@ -1,4 +1,8 @@
-# TODO: reconfigure thsi so that the data idct in throwParser() is configurable
+"""
+Module for saving real world throw data into a .csv file to be read by other modules.
+Currently configured players are me and my roommates. It is possible to configure new
+players, but it would need extensive rewrites. 
+"""
 import pandas as pd
 import sys
 import os
