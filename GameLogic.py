@@ -54,6 +54,7 @@ class UniformDistribution(Distribution):
 
 # just rewrite this shit and get rid of the error checks, I'm not so dumb as to
 # pass missing data into my own program
+# NOTE: BUT THE USER COULD BE
 
 class NormalDistribution(Distribution):
     AVERAGE = "avg"
@@ -98,18 +99,15 @@ class NormalDistribution(Distribution):
 class MetropolisHastings(NormalDistribution, UniformDistribution):
 
     """
-
-
     Metropolis-Hastings algorithm implemetnation
-
-
     """
 
-    # this one is probably require a rewrite
     def get_candidate(self, parameters: dict, *args) -> int:
         """
         calls normal distribution class getXt method and checks it against LEGALTHROWS
         pass a normal distribution-type parameters into this
+        
+        :returns: int
         """
         parameter = parameters
         x_prime = 0
@@ -126,16 +124,14 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
             else:
                 continue
 
-    #  remove parameters later and add back f_x_params
     def calculate_alpha(self, mu: float, sigma: float, initial_x: int, candidate: int) -> float:
         """
         a function to generate the acceptance coefficient \alpha = f(x)/f(x')
+
+        returns: float
         """
         initial_state = initial_x
-        # again, I don't know rn if this is gonna be normal dist
-        # then again, I can just hard-code it, since I will have only 4 players
-        # who'se data is pre-known. and if I wanted to build a new one, I can
-        # just pre-calculate them and hard-code it again
+        # for more info on why normal_curve was used, see ../CurvesAndStats.py
         f_x = CurvesAndStats.Gaussian.normal_curve(initial_state, mu, sigma)
         f_x_prime = CurvesAndStats.Gaussian.normal_curve(candidate, mu, sigma)
         alpha = f_x_prime / f_x
@@ -145,6 +141,8 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
     def reject_or_accept(self, alpha: float, parameters_uniform: dict) -> bool:
         """
         a logical check dependent on \alpha
+
+        :returns: bool
         """
         u = UniformDistribution(parameters_uniform)
         decision_u = u.get_u(50)
@@ -159,6 +157,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         gets to 0 points, as it stands now, it works by literally just
         calculating the factor basend on score and returning said factor
         to be used by Player.run()
+
         :returns: tuple (factor, optimal_throw_iteration)
         """
         factor = CurvesAndStats.Gaussian.erf_with_random_factor(current_score)
@@ -190,7 +189,6 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
         self.parameters = parameters[0]
         self.decision_uniform = params_uniform
         self.player_name = initial
-        # THIS IS FUCKING WRONG, MUSIM PASSNOUT FCI, NE PARAMS
         self._fx_params = parameters[1]
         self._normsdist = NormalDistribution(parameters[0])
 
@@ -201,6 +199,10 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
 
     @staticmethod
     def make_a_lookup() -> list:
+        """
+        A static method to create a lookup of legal throws
+        :returns: list
+        """
         lookup_list = list()
         for i in range(0, 21):
             lookup_list.append(i)
@@ -229,6 +231,8 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
         to MH class' get_candidate
         function, which updates the parameters
         dict so as to modulate g(x|x')
+
+        :returns: x0(int)
         """
         parameters = self._params
         while True:
@@ -241,9 +245,14 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
 
     def run(self, max_iterations: int, score: int) -> tuple:
         """
-        Runs the monte carlo simulation to draw a sequence of three throws
-        a distribution modelled after each player, introduces extra "randomness
-        factor" to counteract getting way too accurate throws
+        Runs the monte carlo simulation to draw a sequence of *max_iterations*
+        throw candidates from a distribution modelled after each player, appending the everages
+        into a triplet of returned throws (return_throws), each checked to be in LEGALTHROWS.
+
+        Also introduces extra "randomness factor" (TOUGH_LUCK) to make the throws feel more
+        "human-y".
+
+        :returns: tuple(return_throws: list, score_inner: int, did_overshoot: bool, did_win:bool)
         """
         initial_state = self.get_initial_state(number_of_simulations=25)
         legal = copy.copy(Player.LEGALTHROWS)
@@ -285,24 +294,26 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                 bin.append(initial_state)
 
             average = int(max(0, np.average(bin)) + np.random.choice((-1, 1), 1)[0] * max(0, np.average(bin)) * max(0, TOUGH_LUCK))
+
             if average in Player.LEGALTHROWS:
                 # print(f"{average} is in legal throws")
                 return_throws.append(average)
                 score_inner -= average
             else:
                 legal.append(average)
-                newlist = sorted(legal)
-                return_val = newlist[newlist.index(average) - 1]
+                templegallist = sorted(legal)
+                return_val = templegallist[templegallist.index(average) - 1]
                 # print(
                 #     f"{average} was not in legal throws, appending next one: {return_val}")
                 return_throws.append(return_val)
                 score_inner -= return_val
+
             # check for overshooting:
-            # flags: 
+            # flags:
             did_overshoot = False
             did_win = False
             # they are set to False by default to avoid running into "referenced before assignment"
-            
+
             match score_inner:
                 case score_inner if score_inner < 0:
                     did_overshoot = True
@@ -313,8 +324,5 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                 case score_inner if score_inner > 0:
                     bias_tuple = Player.biasing(self, score_inner, Player.LEGALTHROWS)
                     self.parameters.update({"avg": bias_tuple[0] * bias_tuple[1]})
-            # hopefully it is biased after eeach and eevery iteration
-            # note to self: budu potřebovat updatenout main, nebo Game.py tak,
-            # aby si to pamatovalo score
 
         return (return_throws, score_inner, did_overshoot, did_win)

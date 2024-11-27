@@ -1,20 +1,22 @@
-"""A set of static method for scipy curve fittings as well
+"""
+A set of static method for scipy curve fittings as well
 as a statistical suite for data analysis and saving the fitted
 parameters in JSON format
 """
-
-# TODO: actually finish the statistics part
-
 import numpy as np
 import math
 import json
 import scipy.optimize as opt
 import os
 import matplotlib.pyplot as plt
+import normality_tests
 
 
 class Gaussian:
-
+    """
+    class containing exponential curves used in this project for fitting the
+    real world data
+    """
     @staticmethod
     def normal_curve(x, mu, sigma):
         f_x = 1 / (np.sqrt(2 * np.pi * (sigma ** 2))) * \
@@ -32,6 +34,7 @@ class Gaussian:
 class Polynomial:
     """
     f(x) = ax^5 + bx^4 + cx^3 + dx^2 + ex
+    to various degrees
     """
     @staticmethod
     def fifth_degree(x, a, b, c, d, e, f):
@@ -56,17 +59,18 @@ class Polynomial:
         return f_x
 
 
-# TODO: potřebuju přesunout generate_fx do tohohle modulu
-# TODO: add a method to configure a new player
 class Statistics:
     """
-    class containing statistical methods used to process
+    Class containing statistical methods used to process
     the input real-world data
     """
 
     def __init__(self, player_data: list, playerInitial: str) -> None:
-        self.player_data_raw = player_data
-        self.player_name = playerInitial
+        """
+        A constructor
+        """
+        self.player_data_raw: list = player_data
+        self.player_name: str = playerInitial
         match self.player_name:
             case "A": self.id = 0
             case "M": self.id = 1
@@ -75,7 +79,7 @@ class Statistics:
 
     def calculate_data(self) -> dict:
         """
-        initial data dict constructor
+        initial data dictionary builder
         """
         parameters = {
             "avg": None,
@@ -88,36 +92,32 @@ class Statistics:
 
         return parameters
 
-    def normality_test(self) -> bool:
-        """
-        function to return a bool by testing whether the data
-        comes from normal distribution
-        """
-        raw_data = self.player_data_raw
-        # implementovat to z příští chemometriky
-        # placeholder
-        return True
+    def test_normality(self) -> bool:
+        if normality_tests.tests.testnormal(self.player_data_raw, self.id) or\
+           normality_tests.tests.testlognormal(self.player_data_raw, self.id):
+            return True
+        else:
+            return False
 
     def generate_fx(self) -> list:
         """
-        Gets the data from .csv z throwSaver.py,
-        načte to do dict a pak s tím dál pracuje
-        :returns list(to_plot) -> plotting coefficients
+        Turns the input data into a (np.ndarray resulting from pd.readcsv()) histogram,
+        calculates bin centers and fits a select curve through them
+        :returns list(to_plot) -> curve coefficients
         """
 
         # unpacks the player data
         data = self.player_data_raw
-
+        # slicing according to player
         a = data[:, self.id]
 
-        # the way I'm currently generating hte histogram is all wrong
+        # generate histogram
         nbins = int(a.max() - a.min())
         hist, edges = np.histogram(a, bins=nbins, range=(a.min(), a.max()), density=True)
 
         print(f"len edges {len(edges.tolist())}")
 
         histNew, edgesNew = np.histogram(a, int((a.max() - a.min())), (a.min(), a.max()))
-
         edge_centers = []
         plt.plot(edges[1:], hist, color="blue")
         for i in range(1, len(edges.tolist())):
@@ -131,35 +131,22 @@ class Statistics:
 
         initial_guess = [a.mean(), a.std()]
 
-        # debug plots
-        # popt, pcov = opt.curve_fit(Polynomial.fifth_degree, xdata, ydata, p0=[1, 1, 1, 1, 1, 1])
-        # plt.plot(xdata, Polynomial.fifth_degree(xdata, popt[0], popt[1], popt[2], popt[3], popt[4], popt[5]), label="quintic")
-        # print(np.linalg.cond(pcov))
-        # popt, pcov = opt.curve_fit(Polynomial.cubic, xdata, ydata, p0=[1,1,1,1])
-        # plt.plot(xdata, Polynomial.cubic(xdata, popt[0], popt[1], popt[2], popt[3]),label="cubic")
-        # print(np.linalg.cond(pcov))
-        # popt, pcov = opt.curve_fit(Polynomial.quadratic, xdata, ydata, p0=[1, 1, 1])
-        # plt.plot(xdata, Polynomial.quadratic(xdata, popt[0], popt[1], popt[2]), color="orange", label="quadratic")
-        # print(np.linalg.cond(pcov))
-        # popt, pcov = opt.curve_fit(Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
-        # plt.plot(xdata, Gaussian.normal_curve(xdata, popt[0], popt[1]), color="red", label="gaussian")
-        # print(np.linalg.cond(pcov))
-        # plt.legend()
-        # plt.savefig(f"{os.getcwd()}/fitting_example.png")
+        # if the distribution isn't by any means normal, it defaults to polynomial curve for fit
+        # i.e. if the skewness/kurtosis is out of whack completely on the dataset, it defaults to
+        # less specialised curve
 
-        if self.normality_test():
-            result = opt.curve_fit(
-                Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
+        if Statistics.test_normality(self):
+            result = opt.curve_fit(Gaussian.normal_curve, xdata, ydata, p0=initial_guess)
             to_plot = result[0].tolist()
         else:
-            result = opt.curve_fit(
-                Polynomial.quadratic, xdata, ydata, p0=initial_guess)
-            to_plot = result[0].tolist()
+            result = opt.curve_fit(Polynomial.cubic, xdata, ydata, p0=initial_guess)
         return to_plot
 
     def savePlayerAsJson(self) -> None:
-        # this is a placeholder, the json in and of itself will probably have
-        # to have more fields
+        """
+        Serializes the currently configured player params dict into a json to be loaded by Game.py
+        and used by MH algorithm
+        """
         parameters = self.calculate_data()
         to_plot = self.generate_fx()
         with open(f"{os.getcwd()}/PlayerParams/{self.player_name}_parameters.json", "w") as g:
