@@ -1,10 +1,4 @@
-# TODO: constructors for::
-#       [] add a check for maximal possible throw without overhsooting
-#       [] update the biasing so it is influenced by other player's score
-#       [] implement the actual game,
-#       [] ošetřit overshooting
 import os
-import sys
 import numpy as np
 import copy
 import json
@@ -56,6 +50,9 @@ class UniformDistribution(Distribution):
 # just rewrite this shit and get rid of the error checks, I'm not so dumb as to
 # pass missing data into my own program
 # NOTE: BUT THE USER COULD BE
+# FIX: one error check to rule them all one check to find them
+#      one error check to bring them all and in custom error throw bind them
+
 
 class NormalDistribution(Distribution):
     AVERAGE = "avg"
@@ -107,7 +104,6 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
         """
         calls normal distribution class getXt method and checks it against LEGALTHROWS
         pass a normal distribution-type parameters into this
-        
         :returns: int
         """
         parameter = parameters
@@ -141,7 +137,7 @@ class MetropolisHastings(NormalDistribution, UniformDistribution):
 
     def reject_or_accept(self, alpha: float, parameters_uniform: dict) -> bool:
         """
-        a logical check dependent on \alpha
+        a logical check dependent on alpha
 
         :returns: bool
         """
@@ -264,10 +260,15 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
 
         :returns: tuple(return_throws: list, score_inner: int, did_overshoot: bool, did_win:bool)
         """
+        # get x_t
         initial_state = self.get_initial_state(number_of_simulations=25)
+        # generate lookup
         legal = copy.copy(Player.LEGALTHROWS)
+        # container for return
         return_throws = []
+        # set the initial score (dictated by game type)
         score_inner = score
+        # create an uniform distribution to wowrk with
         u = UniformDistribution({"max": 0.5, "min": 0})
         TOUGH_LUCK = u.get_u(50)
         for _ in range(3):
@@ -299,7 +300,7 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
                     initial_state = initial_state
                     counter += 1
 
-            # FALLBACK CASE
+            # FALLBACK CASE - when everything gets rejected, just slap the initial state in
             if not bin:
                 bin.append(initial_state)
 

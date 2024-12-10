@@ -8,6 +8,8 @@ class tests:
     I'll just pass the data in the statistics object into here, I will be calling this
     module from the CurvesAndStats.py anyway and statistics class there already has raw_data
     in constructor.
+
+    Really only useful for double-checking and configuring new players where one doesn't know the distribution.
     """
     @staticmethod
     def testlognormal(raw_data, id) -> bool:
@@ -24,6 +26,7 @@ class tests:
 
 # TODO: Implement the actual decision
 # IDEA: Couldn't it be lognormal distro?
+# FIX: It is lognormal, spoiler fucking alert
 
         data = np.array(cont)
         skew = stats.skew(np.array(data), bias=False, nan_policy="omit")
