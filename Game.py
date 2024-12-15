@@ -11,6 +11,10 @@ from GameLogic import InvalidPlayerParams
 
 
 def play_game() -> None:
+    """
+    Handles the player inputs and calling of the GameLogic.Player.run() method 
+    :returns: None
+    """
     paramsNormalizedDecision = {"avg": int(0), "std": int(1), "max": int(60), "min": int(0)}
 
     print("Currently configured players: A, M, T, K")

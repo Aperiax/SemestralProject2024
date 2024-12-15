@@ -179,7 +179,6 @@ class InvalidPlayerParams(Exception):
 
 class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distribution):
 
-    # this is probably gonna need a rewrite, i will get the parameters as distinct parts of the json
     def __init__(self, params_uniform: dict, initial: str) -> None:
         # unpack player
         parameters = None
