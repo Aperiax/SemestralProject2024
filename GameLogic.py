@@ -47,13 +47,6 @@ class UniformDistribution(Distribution):
         return float(np.average(sample))
 
 
-# just rewrite this shit and get rid of the error checks, I'm not so dumb as to
-# pass missing data into my own program
-# NOTE: BUT THE USER COULD BE
-# FIX: one error check to rule them all one check to find them
-#      one error check to bring them all and in custom error throw bind them
-
-
 class NormalDistribution(Distribution):
     AVERAGE = "avg"
     STANDARDDEVIATION = "std"
@@ -302,8 +295,9 @@ class Player(MetropolisHastings, NormalDistribution, UniformDistribution, Distri
             # FALLBACK CASE - when everything gets rejected, just slap the initial state in
             if not bin:
                 bin.append(initial_state)
-
-            average = int(max(0, np.average(bin)) + np.random.choice((-1, 1), 1)[0] * max(0, np.average(bin)) * max(0, TOUGH_LUCK))
+            # average along with "luck" factor addin
+            average = int(max(0, np.average(bin)) + np.random.choice((-1, 1), 1)
+                          [0] * max(0, np.average(bin)) * max(0, TOUGH_LUCK))
 
             if average in Player.LEGALTHROWS:
                 # print(f"{average} is in legal throws")

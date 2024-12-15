@@ -6,13 +6,10 @@ import sys
 import GameLogic
 from GameLogic import InvalidPlayerParams
 
-# what I want to do is literally just populating a lsit with all the players based on the input
-# actual game implementation
-
 
 def play_game() -> None:
     """
-    Handles the player inputs and calling of the GameLogic.Player.run() method 
+    Handles the player inputs and calling of the GameLogic.Player.run() method
     :returns: None
     """
     paramsNormalizedDecision = {"avg": int(0), "std": int(1), "max": int(60), "min": int(0)}

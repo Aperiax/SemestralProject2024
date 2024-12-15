@@ -24,10 +24,6 @@ class tests:
             else:
                 continue
 
-# TODO: Implement the actual decision
-# IDEA: Couldn't it be lognormal distro?
-# FIX: It is lognormal, spoiler fucking alert
-
         data = np.array(cont)
         skew = stats.skew(np.array(data), bias=False, nan_policy="omit")
         kurt = stats.kurtosis(np.array(data), bias=False, nan_policy="omit")

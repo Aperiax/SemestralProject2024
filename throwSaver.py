@@ -1,7 +1,7 @@
 """
 Module for saving real world throw data into a .csv file to be read by other modules.
 Currently configured players are me and my roommates. It is possible to configure new
-players, but it would need extensive rewrites. 
+players, but it would need extensive rewrites.
 """
 import pandas as pd
 import sys
@@ -44,7 +44,6 @@ def throwParser() -> dict:
 def dataFramer(dictionary: dict) -> pd.DataFrame:
 
     data = dictionary
-    # wait, why am I doing this shit, as in why am I changing the data type of value
     df = pd.DataFrame(dict([(key, pd.Series(value)) for key, value in data.items()]))
 
     return df
